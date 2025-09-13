@@ -14,7 +14,9 @@ TraceAyur/
 ## Features
 
 ### Mobile App (React Native + Expo)
+
 - **Collector Interface**: For farmers and collectors to log harvests
+
   - Input farmer details, crop type, and quantity
   - Automatic GPS location capture
   - Local storage with offline sync capability
@@ -26,6 +28,7 @@ TraceAyur/
   - Supply chain transparency
 
 ### Backend (Node.js + Express)
+
 - RESTful API for data management
 - Collection event storage and retrieval
 - QR code generation for products
@@ -34,6 +37,7 @@ TraceAyur/
 ## Tech Stack
 
 ### Mobile App
+
 - **Framework**: React Native with Expo SDK 49
 - **Navigation**: React Navigation 6
 - **State Management**: React Hooks
@@ -43,6 +47,7 @@ TraceAyur/
 - **Language**: TypeScript
 
 ### Backend
+
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Language**: JavaScript
@@ -51,6 +56,7 @@ TraceAyur/
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js (v14 or higher)
 - npm or yarn
 - Expo CLI (`npm install -g @expo/cli`)
@@ -59,17 +65,20 @@ TraceAyur/
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/yourusername/TraceAyur.git
    cd TraceAyur
    ```
 
 2. **Setup Backend**
+
    ```bash
    cd backend
    npm install
    npm start
    ```
+
    The backend server will start on `http://localhost:3000`
 
 3. **Setup Mobile App**
@@ -83,16 +92,19 @@ TraceAyur/
 ## API Endpoints
 
 ### Collection Events
+
 - `POST /api/collection-events` - Submit new collection event
 - `GET /api/collection-events` - Retrieve all collection events
 - `GET /api/collection-events/:id` - Get specific collection event
 
 ### Provenance
+
 - `GET /api/provenance/:qrCode` - Get product provenance data
 
 ## Development
 
 ### Mobile App Development
+
 ```bash
 cd mobile
 npm start          # Start Expo development server
@@ -102,6 +114,7 @@ npm run web        # Run in web browser
 ```
 
 ### Backend Development
+
 ```bash
 cd backend
 npm start          # Start with nodemon (auto-reload)
@@ -130,6 +143,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 🚧 **Under Development** - This project is actively being developed.
 
 ### Current Features
+
 - ✅ Mobile app with collector and consumer interfaces
 - ✅ Backend API with collection event management
 - ✅ QR code scanning functionality
@@ -137,6 +151,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ✅ Offline storage and sync
 
 ### Planned Features
+
 - 🔄 Blockchain integration for immutable records
 - 🔄 Advanced analytics dashboard
 - 🔄 Multi-language support
