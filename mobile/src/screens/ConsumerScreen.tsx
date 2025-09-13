@@ -1,6 +1,4 @@
-// @ts-ignore
-const React = require("react");
-const { useState, useEffect } = React;
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -117,12 +115,18 @@ export default function ConsumerScreen() {
 
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Location</Text>
-          <Text style={styles.infoText}>
-            Latitude: {provenanceData.location.latitude.toFixed(6)}
-          </Text>
-          <Text style={styles.infoText}>
-            Longitude: {provenanceData.location.longitude.toFixed(6)}
-          </Text>
+          {provenanceData.location ? (
+            <>
+              <Text style={styles.infoText}>
+                Latitude: {provenanceData.location.latitude.toFixed(6)}
+              </Text>
+              <Text style={styles.infoText}>
+                Longitude: {provenanceData.location.longitude.toFixed(6)}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.infoText}>Location data not available</Text>
+          )}
         </View>
 
         <View style={styles.infoCard}>

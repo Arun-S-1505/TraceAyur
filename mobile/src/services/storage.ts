@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 export interface CollectionEvent {
   id: string;
   farmerName: string;
+  collectorId: string;
   cropType: string;
   quantity: number;
   location: {
@@ -11,6 +12,17 @@ export interface CollectionEvent {
   };
   timestamp: string;
   synced: boolean;
+  photoUri?: string;
+  photoMetadata?: {
+    collectorId: string;
+    timestamp: string;
+    location: {
+      latitude: number;
+      longitude: number;
+    } | null;
+    farmerName: string;
+    cropType: string;
+  };
 }
 
 export interface ProvenanceData {

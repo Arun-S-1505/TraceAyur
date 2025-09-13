@@ -1,6 +1,4 @@
-﻿// @ts-ignore
-const React = require("react");
-const { useState, useEffect } = React;
+﻿import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,8 +9,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  Image,
 } from "react-native";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import StorageService, { CollectionEvent } from "../services/storage";
 import ApiService from "../services/api";
 
@@ -25,12 +26,15 @@ export default function CollectorScreen() {
   const [farmerName, setFarmerName] = useState("");
   const [cropType, setCropType] = useState("");
   const [quantity, setQuantity] = useState("");
+  const [collectorId, setCollectorId] = useState("");
   const [location, setLocation] = useState(null) as [
     LocationCoords | null,
     any
   ];
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [photo, setPhoto] = useState(null) as [string | null, any];
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
 
   useEffect(() => {
     getCurrentLocation();
@@ -66,9 +70,107 @@ export default function CollectorScreen() {
     }
   };
 
+  const takePhoto = async () => {
+    try {
+      setIsProcessingPhoto(true);
+
+      // Request camera permissions
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "Camera permission is required to take photos."
+        );
+        return;
+      }
+
+      // Launch camera
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        await processPhotoWithMetadata(imageUri);
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      Alert.alert("Camera Error", "Failed to take photo. Please try again.");
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  };
+
+  const processPhotoWithMetadata = async (imageUri: string) => {
+    try {
+      // Get current timestamp
+      const timestamp = new Date().toISOString();
+
+      // Create metadata object
+      const metadata = {
+        collectorId: collectorId || "Unknown",
+        timestamp: timestamp,
+        location: location
+          ? {
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }
+          : null,
+        farmerName: farmerName || "Unknown",
+        cropType: cropType || "Unknown",
+      };
+
+      // For now, we'll store the original image and metadata separately
+      // In a production app, you might want to embed metadata into EXIF data
+      const fileName = `sample_${Date.now()}.jpg`;
+      const documentsDir = FileSystem.documentDirectory;
+      const newImageUri = `${documentsDir}${fileName}`;
+
+      // Copy image to app documents directory
+      await FileSystem.copyAsync({
+        from: imageUri,
+        to: newImageUri,
+      });
+
+      // Store metadata alongside the image
+      const metadataFile = `${documentsDir}${fileName}.metadata.json`;
+      await FileSystem.writeAsStringAsync(
+        metadataFile,
+        JSON.stringify(metadata, null, 2)
+      );
+
+      setPhoto(newImageUri);
+
+      Alert.alert(
+        "Photo Captured",
+        `Photo saved with metadata:\n` +
+          `Collector ID: ${metadata.collectorId}\n` +
+          `Timestamp: ${new Date(metadata.timestamp).toLocaleString()}\n` +
+          `Location: ${
+            metadata.location
+              ? `${metadata.location.latitude.toFixed(
+                  6
+                )}, ${metadata.location.longitude.toFixed(6)}`
+              : "Not available"
+          }`
+      );
+    } catch (error) {
+      console.error("Error processing photo:", error);
+      Alert.alert("Processing Error", "Failed to process photo with metadata.");
+    }
+  };
+
   const validateForm = (): boolean => {
     if (!farmerName.trim()) {
       Alert.alert("Validation Error", "Please enter farmer name");
+      return false;
+    }
+
+    if (!collectorId.trim()) {
+      Alert.alert("Validation Error", "Please enter collector ID");
       return false;
     }
 
@@ -108,11 +210,22 @@ export default function CollectorScreen() {
       const collectionEvent: CollectionEvent = {
         id: Date.now().toString(),
         farmerName: farmerName.trim(),
+        collectorId: collectorId.trim(),
         cropType: cropType.trim(),
         quantity: parseFloat(quantity),
         location: location!,
         timestamp: new Date().toISOString(),
         synced: false,
+        photoUri: photo || undefined,
+        photoMetadata: photo
+          ? {
+              collectorId: collectorId.trim(),
+              timestamp: new Date().toISOString(),
+              location: location,
+              farmerName: farmerName.trim(),
+              cropType: cropType.trim(),
+            }
+          : undefined,
       };
 
       // Save to local storage first
@@ -125,10 +238,13 @@ export default function CollectorScreen() {
         if (isOnline) {
           const apiResponse = await ApiService.submitCollectionEvent({
             farmerName: collectionEvent.farmerName,
+            collectorId: collectionEvent.collectorId,
             cropType: collectionEvent.cropType,
             quantity: collectionEvent.quantity,
             location: collectionEvent.location,
             timestamp: collectionEvent.timestamp,
+            photoUri: collectionEvent.photoUri,
+            photoMetadata: collectionEvent.photoMetadata,
           });
 
           if (apiResponse.success) {
@@ -167,8 +283,10 @@ export default function CollectorScreen() {
 
       // Clear form
       setFarmerName("");
+      setCollectorId("");
       setCropType("");
       setQuantity("");
+      setPhoto(null);
       getCurrentLocation();
     } catch (error) {
       console.error("Error submitting collection event:", error);
@@ -200,6 +318,18 @@ export default function CollectorScreen() {
             onChangeText={setFarmerName}
             placeholder="Enter farmer name"
             autoCapitalize="words"
+            editable={!isSubmitting}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Collector ID *</Text>
+          <TextInput
+            style={styles.input}
+            value={collectorId}
+            onChangeText={setCollectorId}
+            placeholder="Enter collector ID"
+            autoCapitalize="characters"
             editable={!isSubmitting}
           />
         </View>
@@ -263,6 +393,36 @@ export default function CollectorScreen() {
               <Text style={styles.locationErrorText}>
                 Location not available. Tap "Refresh" to try again.
               </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.photoSection}>
+          <Text style={styles.label}>Sample Photo</Text>
+          <Text style={styles.photoDescription}>
+            Take a photo of the collected sample (with GPS and collector ID
+            embedded)
+          </Text>
+
+          <TouchableOpacity
+            style={[
+              styles.photoButton,
+              isProcessingPhoto && styles.photoButtonDisabled,
+            ]}
+            onPress={takePhoto}
+            disabled={isProcessingPhoto || isSubmitting}
+          >
+            <Text style={styles.photoButtonText}>
+              {isProcessingPhoto ? "Processing..." : "📷 Take Photo"}
+            </Text>
+          </TouchableOpacity>
+
+          {photo && (
+            <View style={styles.photoPreview}>
+              <Text style={styles.photoPreviewText}>
+                ✓ Photo captured with metadata
+              </Text>
+              <Image source={{ uri: photo }} style={styles.photoImage} />
             </View>
           )}
         </View>
@@ -425,5 +585,47 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
     marginBottom: 5,
+  },
+  photoSection: {
+    marginBottom: 20,
+  },
+  photoDescription: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 15,
+    lineHeight: 20,
+  },
+  photoButton: {
+    backgroundColor: "#1976d2",
+    borderRadius: 8,
+    padding: 15,
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  photoButtonDisabled: {
+    backgroundColor: "#ccc",
+  },
+  photoButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  photoPreview: {
+    backgroundColor: "#e3f2fd",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  photoPreviewText: {
+    color: "#1976d2",
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 10,
+  },
+  photoImage: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+    resizeMode: "cover",
   },
 });
